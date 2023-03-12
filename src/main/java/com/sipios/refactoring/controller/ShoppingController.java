@@ -1,8 +1,12 @@
 package com.sipios.refactoring.controller;
 
 import java.util.Calendar;
-import java.util.Date;
+import java.util.Map;
 import java.util.TimeZone;
+
+import com.sipios.refactoring.entity.Body;
+import com.sipios.refactoring.entity.Item;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -19,158 +23,73 @@ public class ShoppingController {
     private Logger logger = LoggerFactory.getLogger(ShoppingController.class);
 
     @PostMapping
-    public String getPrice(@RequestBody Body b) {
-        double p = 0;
-        double d;
+    public String getPrice(@RequestBody Body body) {
+        double totalPrice = 0;
 
-        Date date = new Date();
-        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Europe/Paris"));
-        cal.setTime(date);
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/Paris"));
+        double discount = getDiscount(body.getType());
+        boolean isDiscountedPeriod = isDiscountedPeriod(calendar);
 
-        // Compute discount for customer
-        if (b.getType().equals("STANDARD_CUSTOMER")) {
-            d = 1;
-        } else if (b.getType().equals("PREMIUM_CUSTOMER")) {
-            d = 0.9;
-        } else if (b.getType().equals("PLATINUM_CUSTOMER")) {
-            d = 0.5;
-        } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        if (body.getItems() == null) {
+            return "0";
         }
 
-        // Compute total amount depending on the types and quantity of product and
-        // if we are in winter or summer discounts periods
-        if (
-            !(
-                cal.get(Calendar.DAY_OF_MONTH) < 15 &&
-                cal.get(Calendar.DAY_OF_MONTH) > 5 &&
-                cal.get(Calendar.MONTH) == 5
-            ) &&
-            !(
-                cal.get(Calendar.DAY_OF_MONTH) < 15 &&
-                cal.get(Calendar.DAY_OF_MONTH) > 5 &&
-                cal.get(Calendar.MONTH) == 0
-            )
-        ) {
-            if (b.getItems() == null) {
-                return "0";
-            }
-
-            for (int i = 0; i < b.getItems().length; i++) {
-                Item it = b.getItems()[i];
-
-                if (it.getType().equals("TSHIRT")) {
-                    p += 30 * it.getNb() * d;
-                } else if (it.getType().equals("DRESS")) {
-                    p += 50 * it.getNb() * d;
-                } else if (it.getType().equals("JACKET")) {
-                    p += 100 * it.getNb() * d;
-                }
-                // else if (it.getType().equals("SWEATSHIRT")) {
-                //     price += 80 * it.getNb();
-                // }
-            }
-        } else {
-            if (b.getItems() == null) {
-                return "0";
-            }
-
-            for (int i = 0; i < b.getItems().length; i++) {
-                Item it = b.getItems()[i];
-
-                if (it.getType().equals("TSHIRT")) {
-                    p += 30 * it.getNb() * d;
-                } else if (it.getType().equals("DRESS")) {
-                    p += 50 * it.getNb() * 0.8 * d;
-                } else if (it.getType().equals("JACKET")) {
-                    p += 100 * it.getNb() * 0.9 * d;
-                }
-                // else if (it.getType().equals("SWEATSHIRT")) {
-                //     price += 80 * it.getNb();
-                // }
-            }
+        for (Item item : body.getItems()) {
+            double itemPrice = getItemPrice(item.getType(), isDiscountedPeriod);
+            totalPrice += itemPrice * item.getQuantity() * discount;
         }
 
-        try {
-            if (b.getType().equals("STANDARD_CUSTOMER")) {
-                if (p > 200) {
-                    throw new Exception("Price (" + p + ") is too high for standard customer");
-                }
-            } else if (b.getType().equals("PREMIUM_CUSTOMER")) {
-                if (p > 800) {
-                    throw new Exception("Price (" + p + ") is too high for premium customer");
-                }
-            } else if (b.getType().equals("PLATINUM_CUSTOMER")) {
-                if (p > 2000) {
-                    throw new Exception("Price (" + p + ") is too high for platinum customer");
-                }
-            } else {
-                if (p > 200) {
-                    throw new Exception("Price (" + p + ") is too high for standard customer");
-                }
-            }
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        int priceLimit = getCustomerPriceLimit(body.getType());
+        if (totalPrice > priceLimit) {
+            String message = "Price (" + totalPrice + ") is too high for " + body.getType().toLowerCase() + " customer";
+            logger.debug(message);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
         }
 
-        return String.valueOf(p);
-    }
-}
-
-class Body {
-
-    private Item[] items;
-    private String type;
-
-    public Body(Item[] is, String t) {
-        this.items = is;
-        this.type = t;
+        return String.valueOf(totalPrice);
     }
 
-    public Body() {}
+    private boolean isDiscountedPeriod(Calendar calendar) {
+        int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
+        int month = calendar.get(Calendar.MONTH);
 
-    public Item[] getItems() {
-        return items;
+        return (dayOfMonth > 5 && dayOfMonth < 15) && (month == 0 || month == 5);
     }
 
-    public void setItems(Item[] items) {
-        this.items = items;
+    private double getItemPrice(String itemType, boolean isDiscountedPeriod) {
+        switch (itemType) {
+            case "TSHIRT":
+                return 30;
+            case "DRESS":
+                return isDiscountedPeriod ? 40 : 50;
+            case "JACKET":
+                return isDiscountedPeriod ? 90 : 100;
+            default:
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
     }
 
-    public String getType() {
-        return type;
+    private int getCustomerPriceLimit(String customerType) {
+        Map<String, Integer> customerPriceLimits = Map.of(
+            "STANDARD_CUSTOMER", 200,
+            "PREMIUM_CUSTOMER", 800,
+            "PLATINUM_CUSTOMER", 2000
+        );
+
+        return customerPriceLimits.getOrDefault(customerType, 200);
     }
 
-    public void setType(String type) {
-        this.type = type;
-    }
-}
-
-class Item {
-
-    private String type;
-    private int nb;
-
-    public Item() {}
-
-    public Item(String type, int quantity) {
-        this.type = type;
-        this.nb = quantity;
+    private double getDiscount(String customerType) {
+        switch (customerType) {
+            case "STANDARD_CUSTOMER":
+                return 1.0;
+            case "PREMIUM_CUSTOMER":
+                return 0.9;
+            case "PLATINUM_CUSTOMER":
+                return 0.5;
+            default:
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public int getNb() {
-        return nb;
-    }
-
-    public void setNb(int nb) {
-        this.nb = nb;
-    }
 }
