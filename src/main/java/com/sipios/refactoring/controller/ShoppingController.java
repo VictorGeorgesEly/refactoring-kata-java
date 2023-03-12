@@ -64,7 +64,7 @@ public class ShoppingController {
      * <p>
      * So if the function returns true, it means that the current date is a discount period and the price of the items will be adjusted accordingly in the getPrice function. Otherwise, the price will remain unchanged.
      */
-    private boolean isDiscountedPeriod(Calendar calendar) {
+    public boolean isDiscountedPeriod(Calendar calendar) {
         int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
         int month = calendar.get(Calendar.MONTH);
 
@@ -78,7 +78,7 @@ public class ShoppingController {
      * <p>
      * This function is useful for calculating the price of each item in a shopping cart and can be used in conjunction with other functions to calculate the total cost of the shopping cart.
      */
-    private double getItemPrice(String itemType, boolean isDiscountedPeriod) {
+    public double getItemPrice(String itemType, boolean isDiscountedPeriod) {
         switch (itemType) {
             case "TSHIRT":
                 return 30;
@@ -96,7 +96,7 @@ public class ShoppingController {
      * <p>
      * The function first initializes the customerPriceLimits Map with the price limits for each customer type using the Map.of method. This method creates an immutable Map with the specified key-value pairs. Then, the function retrieves the price limit for the input customer type using the getOrDefault method of the Map object. This method returns the value associated with the specified key if it exists in the Map, or the default value (200) if the key is not found. Finally, the function returns the retrieved price limit.
      */
-    private int getCustomerPriceLimit(String customerType) {
+    public int getCustomerPriceLimit(String customerType) {
         Map<String, Integer> customerPriceLimits = Map.of(
             "STANDARD_CUSTOMER", 200,
             "PREMIUM_CUSTOMER", 800,
@@ -113,7 +113,7 @@ public class ShoppingController {
      * <p>
      * The discount rates associated with the different client types are defined in the function with a "switch" statement.
      */
-    private double getDiscount(String customerType) {
+    public double getDiscount(String customerType) {
         switch (customerType) {
             case "STANDARD_CUSTOMER":
                 return 1.0;
