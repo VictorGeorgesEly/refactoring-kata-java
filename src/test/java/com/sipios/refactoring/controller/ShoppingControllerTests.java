@@ -27,29 +27,21 @@ class ShoppingControllerTests extends UnitTest {
     }
 
     @Test
-    public void testStandardCustomerDiscount() {
+    public void testGetDiscount() {
         ShoppingController shoppingController = new ShoppingController();
+        // Test standard customer
         double discount = shoppingController.getDiscount("STANDARD_CUSTOMER");
         assertEquals(1.0, discount, 0.001);
-    }
 
-    @Test
-    public void testPremiumCustomerDiscount() {
-        ShoppingController shoppingController = new ShoppingController();
-        double discount = shoppingController.getDiscount("PREMIUM_CUSTOMER");
+        // Test premium customer
+        discount = shoppingController.getDiscount("PREMIUM_CUSTOMER");
         assertEquals(0.9, discount, 0.001);
-    }
 
-    @Test
-    public void testPlatinumCustomerDiscount() {
-        ShoppingController shoppingController = new ShoppingController();
-        double discount = shoppingController.getDiscount("PLATINUM_CUSTOMER");
+        // Test platinum customer
+        discount = shoppingController.getDiscount("PLATINUM_CUSTOMER");
         assertEquals(0.5, discount, 0.001);
-    }
 
-    @Test
-    public void testInvalidCustomerDiscount() {
-        ShoppingController shoppingController = new ShoppingController();
+        // Test invalid customer
         Assertions.assertThrows(ResponseStatusException.class, () -> {
             shoppingController.getDiscount("INVALID_CUSTOMER");
         });
